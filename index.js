@@ -15,7 +15,7 @@ async function fetchPage(url) {
         const { data } = await axios.get(url, {
             headers: { "User-Agent": USER_AGENT },
             timeout: 25000,
-            maxRedirects: 5
+            maxRedirects: 10
         });
         return cheerio.load(data);
     } catch (e) {
@@ -65,7 +65,7 @@ app.get("/api/trending", async (req, res) => {
     }
 });
 
-// Movies with Pagination
+// Movies
 app.get("/api/movies", async (req, res) => {
     const page = req.query.page || 1;
     try {
@@ -106,7 +106,7 @@ app.get("/api/search", async (req, res) => {
     }
 });
 
-// ==================== FULL DETAILS (Improved) ====================
+// ==================== FULL DETAILS WITH BETTER DOWNLOADS ====================
 app.get("/api/details", async (req, res) => {
     let { slug } = req.query;
     if (!slug) return res.status(400).json({ success: false, error: "slug අවශ්‍යයි" });
@@ -125,7 +125,7 @@ app.get("/api/details", async (req, res) => {
         const cast = [];
         $("a[href*='/cast/']").each((_, el) => cast.push($(el).text().trim()));
 
-        // Downloads (Improved)
+        // Downloads - Improved zt-links handling
         const downloads = [];
         $("a[href*='zt-links'], a[href*='download'], .movie-download-button, .links-table a").each((_, el) => {
             let href = $(el).attr("href");
@@ -140,7 +140,7 @@ app.get("/api/details", async (req, res) => {
             }
         });
 
-        // Episodes for TV Shows
+        // Episodes
         const episodes = [];
         if (url.includes("/tvshows/")) {
             $(".episodes-list li a, .episode-link").each((_, el) => {
@@ -176,7 +176,7 @@ app.get("/api/details", async (req, res) => {
     }
 });
 
-// ==================== START SERVER ====================
+// ==================== SERVER START ====================
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
