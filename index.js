@@ -42,10 +42,8 @@ function parseListItem($, el) {
 app.get("/", (req, res) => {
     res.json({
         success: true,
-        message: "🎬 CineSubz.lk Full Public API is Running",
-        developer: "Sinhala Subtitle Movies & TV Shows",
+        message: "🎬 CineSubz.lk Full Public API",
         endpoints: {
-            home: "http://localhost:3000/",
             trending: "/api/trending",
             movies: "/api/movies",
             tvshows: "/api/tvshows",
@@ -108,7 +106,7 @@ app.get("/api/search", async (req, res) => {
     }
 });
 
-// Full Details with Episodes & Downloads
+// ==================== FULL DETAILS (Improved) ====================
 app.get("/api/details", async (req, res) => {
     let { slug } = req.query;
     if (!slug) return res.status(400).json({ success: false, error: "slug අවශ්‍යයි" });
@@ -118,25 +116,26 @@ app.get("/api/details", async (req, res) => {
         const $ = await fetchPage(url);
         if (!$) throw new Error("Cannot load page");
 
-        const title = $("h1").first().text().trim() || $(".entry-title").text().trim();
+        const title = $("h1.entry-title, .details-title").first().text().trim();
         const description = $(".details-desc, .entry-content").text().trim().substring(0, 1000);
-        const poster = $(".thumb, img").first().attr("src");
+        const poster = $(".thumb, img.wp-post-image").first().attr("src");
         const imdb = $(".imdb-score").text().trim();
 
         // Cast
         const cast = [];
         $("a[href*='/cast/']").each((_, el) => cast.push($(el).text().trim()));
 
-        // Downloads
+        // Downloads (Improved)
         const downloads = [];
-        $("a[href*='download'], a[href*='zt-links'], .links-table a").each((_, el) => {
+        $("a[href*='zt-links'], a[href*='download'], .movie-download-button, .links-table a").each((_, el) => {
             let href = $(el).attr("href");
+            const text = $(el).text().trim();
             if (href) {
                 if (!href.startsWith("http")) href = BASE_URL + href;
                 downloads.push({
-                    name: $(el).text().trim() || "Download",
+                    name: text || "Download",
                     url: href,
-                    quality: $(el).closest("tr, div").find(".badge-quality-corner").text().trim() || ""
+                    quality: $(el).closest("tr, div").find(".badge-quality-corner").text().trim() || "Unknown"
                 });
             }
         });
@@ -154,38 +153,39 @@ app.get("/api/details", async (req, res) => {
             });
         }
 
+        const uniqueDownloads = Array.from(new Map(downloads.map(item => [item.url, item])).values());
+
         res.json({
             success: true,
             data: {
-                title,
+                title: title || "Unknown Title",
                 type: url.includes("/tvshows/") ? "tv" : "movie",
                 url,
                 poster: poster ? (poster.startsWith("http") ? poster : BASE_URL + poster) : "",
                 imdb: imdb || null,
                 description: description || "විස්තර නොමැත",
                 cast: [...new Set(cast)].slice(0, 12),
-                downloads,
-                episodes: episodes.length ? episodes : null
+                downloads: uniqueDownloads.length ? uniqueDownloads : [],
+                episodes: episodes.length ? episodes : null,
+                note: "zt-links වල 'Get Link' බොත්තම ඔබා බාගත කරන්න."
             }
         });
     } catch (e) {
+        console.error(e);
         res.status(500).json({ success: false, error: e.message });
     }
 });
 
-// ==================== SERVER START ====================
+// ==================== START SERVER ====================
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
-    console.log("\n" + "=".repeat(60));
+    console.log("\n" + "=".repeat(70));
     console.log("🎬 CineSubz.lk Full API Server Started Successfully!");
-    console.log("=".repeat(60));
-    console.log(`🌐 Root Endpoint     : http://localhost:${PORT}`);
-    console.log(`📺 Trending          : http://localhost:${PORT}/api/trending`);
-    console.log(`🎥 Movies            : http://localhost:${PORT}/api/movies`);
-    console.log(`📺 TV Shows          : http://localhost:${PORT}/api/tvshows`);
-    console.log(`🔍 Search            : http://localhost:${PORT}/api/search?q=avatar`);
-    console.log(`📋 Full Details      : http://localhost:${PORT}/api/details?slug=game-of-thrones-2011-sinhala-subtitles`);
-    console.log("=".repeat(60));
-    console.log("✅ Ready to use! Open browser and test the links.\n");
+    console.log("=".repeat(70));
+    console.log(`🌐 Root URL         : http://localhost:${PORT}`);
+    console.log(`🔍 Search Example  : http://localhost:${PORT}/api/search?q=avatar`);
+    console.log(`📋 Details Example : http://localhost:${PORT}/api/details?slug=avatar-fire-and-ash-2025-sinhala-subtitles`);
+    console.log("=".repeat(70));
+    console.log("✅ Ready for Web UI!\n");
 });
